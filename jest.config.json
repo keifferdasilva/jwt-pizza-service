@@ -1,4 +1,7 @@
 {
   "collectCoverage": true,
-  "verbose": true
+  "verbose": true,
+  "coverageReporters": [
+    "json-summary"
+  ]
 }
