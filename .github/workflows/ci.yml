@@ -37,9 +37,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
       - name: Write config file
         run: |
           echo "module.exports = {
@@ -80,3 +77,5 @@ jobs:
           git add .
           git commit -m "generated"
           git push
+      - name: Lint
+        run: npm run lint
