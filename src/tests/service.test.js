@@ -1,9 +1,5 @@
 const request = require('supertest')
-const app = require('./service');
-
-test('basic', ()=>{
-    expect(true).toBe(true);
-});
+const app = require('../service');
 
 test('default endpoint', async() =>{
     const defaultRes = await request(app).get('/');
