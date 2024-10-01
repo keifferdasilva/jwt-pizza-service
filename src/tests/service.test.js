@@ -5,7 +5,7 @@ test('default endpoint', async() =>{
     const defaultRes = await request(app).get('/');
     expect(defaultRes.statusCode).toBe(200);
     expect(defaultRes.body.message).toMatch('welcome to JWT Pizza')
-    expect(defaultRes.body.version).toMatch(/^2024[0-2][0-9][0-3][0-9]\.[0-1][0-9][0-5][0-9][0-5][0-9]$/);
+    expect(defaultRes.body.version).toMatch(/^2024[0-2][0-9][0-3][0-9]\.[0-2][0-9][0-5][0-9][0-5][0-9]$/);
 });
 
 test('unknown endpoint', async() =>{
@@ -17,5 +17,5 @@ test('unknown endpoint', async() =>{
 test('docs endpoint', async() =>{
     const docsRes = await request(app).options('/api/docs')
     expect(docsRes.statusCode).toBe(200);
-    expect(docsRes.body.version).toMatch(/^2024[0-2][0-9][0-3][0-9]\.[0-1][0-9][0-5][0-9][0-5][0-9]$/);
+    expect(docsRes.body.version).toMatch(/^2024[0-2][0-9][0-3][0-9]\.[0-2][0-9][0-5][0-9][0-5][0-9]$/);
 });
