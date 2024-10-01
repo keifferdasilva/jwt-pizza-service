@@ -4,7 +4,7 @@ const {Role, DB} = require("../database/database");
 
 async function createUser(){
    const newUser = { name: "keiffer", email: "k@jwt.com", password: "admin", roles: [{ role: Role.Admin }] };
-    DB.addUser(newUser).then((r) => console.log('created user: ', r));
+   await DB.addUser(newUser);
 }
 
 test('login', async() =>{
