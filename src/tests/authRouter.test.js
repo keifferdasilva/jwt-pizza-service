@@ -2,12 +2,13 @@ const request = require('supertest')
 const app = require('../service');
 const {Role, DB} = require("../database/database");
 
-beforeAll( async() =>{
+async function createUser(){
    const newUser = { name: "keiffer", email: "k@jwt.com", password: "admin", roles: [{ role: Role.Admin }] };
     DB.addUser(newUser).then((r) => console.log('created user: ', r));
-});
+}
 
 test('login', async() =>{
+    await createUser();
     const login = {email: "k@jwt.com", password: "admin"};
     const loginRes = await request(app).put('/api/auth').send(login);
     expect(loginRes.statusCode).toBe(200);
