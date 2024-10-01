@@ -1,6 +1,7 @@
 const request = require('supertest')
 const app = require('../service');
 const {Role, DB} = require("../database/database");
+const authRouter = require("../routes/authRouter");
 
 function randomName() {
     return Math.random().toString(36).substring(2, 12);
@@ -40,3 +41,24 @@ test('register', async() =>{
     expect(registerRes.body).toHaveProperty('token');
     expect(registerRes.body.user.roles).toEqual([{role: "diner"}]);
 });
+
+test('bad register', async() =>{
+    const registerRes = await request(app).post('/api/auth');
+    expect(registerRes.statusCode).toBe(400);
+    expect(registerRes.body.message).toMatch('name, email, and password are required');
+});
+
+test('logout', async () =>{
+    const user = await createAdminUser();
+    const login = {email: user.email, password: user.password};
+    const loginRes = await request(app).put('/api/auth').send(login);
+    const token = loginRes.body.token;
+    const logoutRes = await request(app).delete('/api/auth').set('Authorization', `Bearer ${token}`);
+    expect(logoutRes.statusCode).toBe(200);
+});
+
+test('invalid authtoken', async() =>{
+    const logoutRes = await request(app).delete('/api/auth').set('Authorization', randomName());
+    expect(logoutRes.statusCode).toBe(401);
+    expect(logoutRes.body.message).toBe('unauthorized');
+})
