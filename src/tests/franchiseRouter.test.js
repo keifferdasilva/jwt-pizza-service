@@ -123,7 +123,22 @@ test('create store', async() =>{
 })
 
 test('delete store', async() =>{
+    const user = await createAdminUser();
+    const data = await loginUser(user);
 
+    const name = randomName();
+    const newFranchise = {name: name, admins: [{email: user.email}]};
+    const createFranchiseRes = await request(app).post('/api/franchise').set('Authorization', `Bearer ${data.token}`).send(newFranchise);
+    const id = createFranchiseRes.body.id;
+
+    const storeName = randomName();
+    const createStoreRes = await request(app).post(`/api/franchise/${id}/store`).set('Authorization', `Bearer ${data.token}`).send({name: storeName});
+    expect(createStoreRes.statusCode).toBe(200);
+
+    const storeId = createStoreRes.body.id;
+    const deleteRes = await request(app).delete(`/api/franchise/${id}/store/${storeId}`).set('Authorization', `Bearer ${data.token}`);
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.body.message).toMatch("store deleted");
 })
 
 
