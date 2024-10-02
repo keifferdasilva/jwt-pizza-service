@@ -1,7 +1,6 @@
 const request = require('supertest')
 const app = require('../service');
 const {Role, DB} = require("../database/database");
-const authRouter = require("../routes/authRouter");
 
 function randomName() {
     return Math.random().toString(36).substring(2, 12);
@@ -61,4 +60,42 @@ test('invalid authtoken', async() =>{
     const logoutRes = await request(app).delete('/api/auth').set('Authorization', randomName());
     expect(logoutRes.statusCode).toBe(401);
     expect(logoutRes.body.message).toBe('unauthorized');
+})
+
+test('update user', async() =>{
+    const user = await createAdminUser();
+    const login = {email: user.email, password: user.password};
+    const loginRes = await request(app).put('/api/auth').send(login);
+    const id = loginRes.body.user.id;
+    const token = loginRes.body.token;
+
+    const newPassword = 'test';
+    const newEmail = randomName() + '@test.com';
+    let newUser = {email: newEmail, password: newPassword};
+    const updateUserRes = await request(app).put(`/api/auth/${id}`).set('Authorization', `Bearer ${token}`).send(newUser);
+
+    expect(updateUserRes.statusCode).toBe(200);
+    expect(updateUserRes.body.email).toMatch(newEmail);
+    expect(updateUserRes.body.name).toMatch(loginRes.body.user.name);
+    expect(updateUserRes.body.id).toBe(id);
+
+})
+
+test('unauthorized update user', async() =>{
+    let user = { password: 'toomanysecrets'};
+    user.name = randomName();
+    user.email = user.name + '@jwt.com';
+
+    const registerRes = await request(app).post('/api/auth').send(user);
+
+    const id = registerRes.body.user.id;
+    const token = registerRes.body.token;
+
+    const newPassword = 'test';
+    const newEmail = randomName() + '@test.com';
+    let newUser = {email: newEmail, password: newPassword};
+    const updateUserRes = await request(app).put(`/api/auth/${id}`).set('Authorization', `Bearer ${token}`).send(newUser);
+
+    expect(updateUserRes.status).toBe(403);
+    expect(updateUserRes.body.message).toMatch('unauthorized');
 })
