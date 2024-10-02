@@ -108,7 +108,18 @@ test('get user franchises', async() =>{
 })
 
 test('create store', async() =>{
+    const user = await createAdminUser();
+    const data = await loginUser(user);
 
+    const name = randomName();
+    const newFranchise = {name: name, admins: [{email: user.email}]};
+    const createFranchiseRes = await request(app).post('/api/franchise').set('Authorization', `Bearer ${data.token}`).send(newFranchise);
+    const id = createFranchiseRes.body.id;
+
+    const storeName = randomName();
+    const createStoreRes = await request(app).post(`/api/franchise/${id}/store`).set('Authorization', `Bearer ${data.token}`).send({name: storeName});
+    expect(createStoreRes.statusCode).toBe(200);
+    expect(createStoreRes.body).toEqual(expect.objectContaining({name: storeName, franchiseId: id}));
 })
 
 test('delete store', async() =>{
