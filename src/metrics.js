@@ -11,11 +11,13 @@ class Metrics {
 
         // This will periodically sent metrics to Grafana
         const timer = setInterval(() => {
-            this.sendMetricToGrafana('request', 'all', 'total', this.totalRequests);
-            this.sendMetricToGrafana('request', 'get', 'total', this.getRequests);
-            this.sendMetricToGrafana('request', 'delete', 'total', this.deleteRequests);
-            this.sendMetricToGrafana('request', 'post', 'total', this.postRequests);
-            this.sendMetricToGrafana('request', 'put', 'total', this.putRequests);
+            this.sendHTTPMetricToGrafana('request', 'all', 'total', this.totalRequests);
+            this.sendHTTPMetricToGrafana('request', 'get', 'total', this.getRequests);
+            this.sendHTTPMetricToGrafana('request', 'delete', 'total', this.deleteRequests);
+            this.sendHTTPMetricToGrafana('request', 'post', 'total', this.postRequests);
+            this.sendHTTPMetricToGrafana('request', 'put', 'total', this.putRequests);
+            this.sendUsageMetricToGrafana('usage', 'cpu', getCpuUsagePercentage());
+            this.sendUsageMetricToGrafana('usage', 'memory', getMemoryUsagePercentage());
         }, 10000);
         timer.unref();
     }
@@ -40,9 +42,7 @@ class Metrics {
         this.putRequests++;
     }
 
-    sendMetricToGrafana(metricPrefix, httpMethod, metricName, metricValue) {
-        const metric = `${metricPrefix},source=${config.metrics.source},method=${httpMethod} ${metricName}=${metricValue}`;
-
+    sendMetricToGrafana(metric) {
         fetch(`${config.metrics.url}`, {
             method: 'post',
             body: metric,
@@ -51,6 +51,7 @@ class Metrics {
             .then((response) => {
                 if (!response.ok) {
                     console.error('Failed to push metrics data to Grafana');
+                    console.error(response);
                 } else {
                     console.log(`Pushed ${metric}`);
                 }
@@ -58,6 +59,17 @@ class Metrics {
             .catch((error) => {
                 console.error('Error pushing metrics:', error);
             });
+    }
+
+    sendHTTPMetricToGrafana(metricPrefix, httpMethod, metricName, metricValue) {
+        const metric = `${metricPrefix},source=${config.metrics.source},method=${httpMethod} ${metricName}=${metricValue}`;
+        this.sendMetricToGrafana(metric);
+
+    }
+
+    sendUsageMetricToGrafana(metricPrefix, metricName, metricValue) {
+        const metric = `${metricPrefix},source=${config.metrics.source} ${metricName}=${metricValue}`;
+        this.sendMetricToGrafana(metric);
     }
 
 }
