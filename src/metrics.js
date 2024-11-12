@@ -8,16 +8,18 @@ class Metrics {
         this.postRequests = 0;
         this.deleteRequests = 0;
         this.putRequests = 0;
+        this.activeUsers = 0;
 
-        // This will periodically sent metrics to Grafana
+        // This will periodically send metrics to Grafana
         const timer = setInterval(() => {
-            this.sendHTTPMetricToGrafana('request', 'all', 'total', this.totalRequests);
-            this.sendHTTPMetricToGrafana('request', 'get', 'total', this.getRequests);
-            this.sendHTTPMetricToGrafana('request', 'delete', 'total', this.deleteRequests);
-            this.sendHTTPMetricToGrafana('request', 'post', 'total', this.postRequests);
-            this.sendHTTPMetricToGrafana('request', 'put', 'total', this.putRequests);
-            this.sendUsageMetricToGrafana('usage', 'cpu', getCpuUsagePercentage());
-            this.sendUsageMetricToGrafana('usage', 'memory', getMemoryUsagePercentage());
+            this.sendHTTPMetricToGrafana( 'all', 'total', this.totalRequests);
+            this.sendHTTPMetricToGrafana( 'get', 'total', this.getRequests);
+            this.sendHTTPMetricToGrafana( 'delete', 'total', this.deleteRequests);
+            this.sendHTTPMetricToGrafana( 'post', 'total', this.postRequests);
+            this.sendHTTPMetricToGrafana( 'put', 'total', this.putRequests);
+            this.sendUsageMetricToGrafana( 'cpu', getCpuUsagePercentage());
+            this.sendUsageMetricToGrafana( 'memory', getMemoryUsagePercentage());
+            this.sendActiveMetricToGrafana('total', this.activeUsers);
         }, 10000);
         timer.unref();
     }
@@ -42,6 +44,14 @@ class Metrics {
         this.putRequests++;
     }
 
+    incrementActiveUsers() {
+        this.activeUsers++;
+    }
+
+    decrementActiveUsers() {
+        this.activeUsers--;
+    }
+
     sendMetricToGrafana(metric) {
         fetch(`${config.metrics.url}`, {
             method: 'post',
@@ -61,14 +71,19 @@ class Metrics {
             });
     }
 
-    sendHTTPMetricToGrafana(metricPrefix, httpMethod, metricName, metricValue) {
-        const metric = `${metricPrefix},source=${config.metrics.source},method=${httpMethod} ${metricName}=${metricValue}`;
+    sendHTTPMetricToGrafana(httpMethod, metricName, metricValue) {
+        const metric = `request,source=${config.metrics.source},method=${httpMethod} ${metricName}=${metricValue}`;
         this.sendMetricToGrafana(metric);
 
     }
 
-    sendUsageMetricToGrafana(metricPrefix, metricName, metricValue) {
-        const metric = `${metricPrefix},source=${config.metrics.source} ${metricName}=${metricValue}`;
+    sendUsageMetricToGrafana(metricName, metricValue) {
+        const metric = `usage,source=${config.metrics.source} ${metricName}=${metricValue}`;
+        this.sendMetricToGrafana(metric);
+    }
+
+    sendActiveMetricToGrafana(metricName, metricValue) {
+        const metric = `active,source=${config.metrics.source} ${metricName}=${metricValue}`;
         this.sendMetricToGrafana(metric);
     }
 
@@ -92,6 +107,15 @@ const metrics = new Metrics();
 
 requestTracker = (req, res, next) =>{
     let method = req.method;
+    let path = req.path;
+    if(path === '/api/auth' && res.statusCode === 200){
+        if(method === 'POST' || method === 'PUT') {
+            metrics.incrementActiveUsers();
+        }
+        else if(method === 'DELETE'){
+            metrics.decrementActiveUsers();
+        }
+    }
     metrics.incrementTotalRequests();
     switch (method) {
         case 'POST':
@@ -111,4 +135,4 @@ requestTracker = (req, res, next) =>{
     }
     next();
 }
-module.exports = {getCpuUsagePercentage, getMemoryUsagePercentage, metrics, requestTracker};
+module.exports = {metrics, requestTracker};
