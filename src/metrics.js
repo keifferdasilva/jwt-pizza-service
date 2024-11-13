@@ -92,6 +92,7 @@ class Metrics {
                 if (!response.ok) {
                     console.error('Failed to push metrics data to Grafana');
                     console.error(response);
+                    console.error(metric);
                 } else {
                     console.log(`Pushed ${metric}`);
                 }
@@ -148,6 +149,12 @@ function getMemoryUsagePercentage() {
     const memoryUsage = (usedMemory / totalMemory) * 100;
     return memoryUsage.toFixed(2);
 }
+
+function pizzaCreationLatency(startTime, endTime) {
+    const latency = endTime - startTime;
+    const metric = `pizza,source=${config.metrics.source} latency=${latency}`;
+    metrics.sendMetricToGrafana(metric);
+}
 const metrics = new Metrics();
 
 requestTracker = (req, res, next) =>{
@@ -182,7 +189,7 @@ requestTracker = (req, res, next) =>{
                 metrics.incrementPizzasSold();
                 let items = req.body.items;
                 let revenue = 0;
-                for (const item in items) {
+                for (const item of items) {
                     revenue += item.price;
                 }
                 metrics.addToRevenue(revenue);
@@ -213,4 +220,4 @@ requestTracker = (req, res, next) =>{
     }
     next();
 }
-module.exports = {metrics, requestTracker};
+module.exports = {metrics, requestTracker, pizzaCreationLatency};
