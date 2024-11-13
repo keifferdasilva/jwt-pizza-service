@@ -157,7 +157,7 @@ function pizzaCreationLatency(startTime, endTime) {
 }
 const metrics = new Metrics();
 
-requestTracker = (req, res, next) =>{
+function requestTracker(req, res, next){
     let startTime = Date.now();
     let method = req.method;
     let path = req.path;
