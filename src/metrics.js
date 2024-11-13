@@ -9,6 +9,11 @@ class Metrics {
         this.deleteRequests = 0;
         this.putRequests = 0;
         this.activeUsers = 0;
+        this.successfulAuthentication = 0;
+        this.unsuccessfulAuthentication = 0;
+        this.pizzasSold = 0;
+        this.failedPizzas = 0;
+        this.revenue = 0;
 
         // This will periodically send metrics to Grafana
         const timer = setInterval(() => {
@@ -20,6 +25,11 @@ class Metrics {
             this.sendUsageMetricToGrafana( 'cpu', getCpuUsagePercentage());
             this.sendUsageMetricToGrafana( 'memory', getMemoryUsagePercentage());
             this.sendActiveMetricToGrafana('total', this.activeUsers);
+            this.sendAuthenticationMetricToGrafana('success', this.successfulAuthentication);
+            this.sendAuthenticationMetricToGrafana('failure', this.unsuccessfulAuthentication);
+            this.sendPizzaMetricToGrafana('sold', this.pizzasSold);
+            this.sendPizzaMetricToGrafana('failures', this.failedPizzas);
+            this.sendPizzaMetricToGrafana('revenue', this.revenue);
         }, 10000);
         timer.unref();
     }
@@ -50,6 +60,26 @@ class Metrics {
 
     decrementActiveUsers() {
         this.activeUsers--;
+    }
+
+    incrementSuccessfulAuthentication() {
+        this.successfulAuthentication++;
+    }
+
+    incrementUnsuccessfulAuthentication() {
+        this.unsuccessfulAuthentication++;
+    }
+
+    incrementPizzasSold() {
+        this.pizzasSold++;
+    }
+
+    incrementFailedPizzas() {
+        this.failedPizzas++;
+    }
+
+    addToRevenue(value){
+        this.revenue += value;
     }
 
     sendMetricToGrafana(metric) {
@@ -87,6 +117,21 @@ class Metrics {
         this.sendMetricToGrafana(metric);
     }
 
+    sendAuthenticationMetricToGrafana(metricName, metricValue){
+        const metric = `authentication,source=${config.metrics.source} ${metricName}=${metricValue}`;
+        this.sendMetricToGrafana(metric);
+    }
+
+    sendLatencyMetricToGrafana(httpMethod, path, metricName, metricValue){
+        const metric = `request,source=${config.metrics.source},method=${httpMethod},path=${path} ${metricName}=${metricValue}`;
+        this.sendMetricToGrafana(metric);
+    }
+
+    sendPizzaMetricToGrafana(metricName, metricValue) {
+        const metric = `pizza,source=${config.metrics.source} ${metricName}=${metricValue}`;
+        this.sendMetricToGrafana(metric);
+    }
+
 }
 
 
@@ -106,16 +151,49 @@ function getMemoryUsagePercentage() {
 const metrics = new Metrics();
 
 requestTracker = (req, res, next) =>{
+    let startTime = Date.now();
     let method = req.method;
     let path = req.path;
-    if(path === '/api/auth' && res.statusCode === 200){
-        if(method === 'POST' || method === 'PUT') {
-            metrics.incrementActiveUsers();
+
+    res.on("finish", function() {
+
+        //Send latency of request
+        let endTime = Date.now();
+
+        const latency = endTime - startTime;
+        metrics.sendLatencyMetricToGrafana(method, path, 'latency', latency);
+
+        //Track active users/successful authentication
+        if (path === '/api/auth' && res.statusCode === 200) {
+            metrics.incrementSuccessfulAuthentication();
+            if (method === 'POST' || method === 'PUT') {
+                metrics.incrementActiveUsers();
+            } else if (method === 'DELETE') {
+                metrics.decrementActiveUsers();
+            }
         }
-        else if(method === 'DELETE'){
-            metrics.decrementActiveUsers();
+        //Track unsuccessful authentication
+        else if (path === '/api/auth' && res.statusCode !== 200) {
+            metrics.incrementUnsuccessfulAuthentication();
         }
-    }
+
+        if(path === '/api/order' && method === 'POST'){
+            if(res.statusCode === 200){
+                metrics.incrementPizzasSold();
+                let items = req.body.items;
+                let revenue = 0;
+                for (const item in items) {
+                    revenue += item.price;
+                }
+                metrics.addToRevenue(revenue);
+            }
+            else if(res.statusCode === 500){
+                metrics.incrementFailedPizzas();
+            }
+        }
+
+    });
+
     metrics.incrementTotalRequests();
     switch (method) {
         case 'POST':
