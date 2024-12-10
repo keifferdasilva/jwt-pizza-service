@@ -157,8 +157,4 @@ jobs:
           service: jwt-pizza-service
           cluster: jwt-pizza-service
           wait-for-service-stability: false
-      - name: Run Dastardly Action Step
-        uses: PortSwigger/dastardly-github-action@main
-        with:
-          target-url: 'https://pizza.keifferd.click'
             
